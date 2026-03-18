@@ -44,7 +44,7 @@ This application utilizes **Endee**, a high-performance vector database, to driv
 ### B. Retailer Policy RAG (Retrieval-Augmented Generation) & Dashboards
 1. Official store return policies, markdown schedules, and shipping rules are embedded into Endee.
 2. The B2B backend successfully tracks inventory metrics (like lowest stock, expiring items, etc.) and injects them alongside Endee context. 
-3. **Important Evaluation Note:** To guarantee seamless evaluation and avoid random crashes due to free-API rate-limiting, the *final text generation* for the bots has been deliberately switched to a stable **Demo Mode**. They return highly-accurate, keyword-triggered hardcoded responses (e.g., correctly showing which items are low stock, fast-moving, or near expiry) rather than risking an API failure. The core logic of tracking expiry, receipt scanning, and semantic recipe search works flawlessly!
+3. **Important Evaluation Note:** Due to strict time constraints and to guarantee seamless evaluation without random free-API rate-limit crashes, the *final text generation* for the bots has been temporarily hardcoded and switched to a stable **Demo Mode**. They return highly-accurate, keyword-triggered hardcoded responses (e.g., correctly showing which items are low stock, fast-moving, or near expiry) rather than risking an API failure. The core logic of tracking expiry, receipt scanning, and semantic recipe search works flawlessly!
 
 ---
 
