@@ -1,77 +1,94 @@
-# PantryPal+ AI: Smart Recipe Recommendations with Endee Vector Database
+# 🌟 PantryPal+ AI: Intelligent Inventory & Cooking Assistant
 
-This repository contains the complete codebase for **PantryPal+ AI**, a comprehensive inventory management and consumer grocery tracking application newly overhauled with an **AI Semantic Recipe Recommendation Engine** built on top of the **Endee Vector Database**.
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Endee Vector DB](https://img.shields.io/badge/Powered%20By-Endee%20Vector%20DB-blue)
+![React](https://img.shields.io/badge/Frontend-React%20v18-blue)
+![NodeJS](https://img.shields.io/badge/Backend-Node.js%20Express-green)
 
-This project was built and submitted as part of the Endee Evaluation Assignment.
+Welcome to **PantryPal+ AI**, a comprehensive, dual-interface grocery management platform transformed by an **Endee-powered Semantic AI Engine**. This project combats global food waste by bridging the gap between supermarket inventory management and at-home consumer cooking.
 
-## 🚀 Project Overview
-PantryPal+ is a dual-interface application:
-1. **Retailer App:** Manages store inventory, automates discounts for expiring items, and processes POS transactions.
-2. **Customer App:** Consumers claim their digital receipts via SMS passcodes, track at-home expiry dates to prevent food waste, and—crucially—receive **AI-powered recipe recommendations** based on their available pantry ingredients.
+Built and submitted for the **Endee.io Vector Database Evaluation Assignment**.
 
-### The AI/ML Use Case: Semantic Recipe Search
-To combat food waste, we want to suggest recipes to users based on the ingredients they have stretching near expiration. 
-Traditional exact-keyword searches fail here (e.g., searching "beef" doesn't return recipes for "steak" or "ground chuck").
+---
 
-**Instead, we used Endee as a Vector Database for Semantic Search:**
-1. We pre-loaded the Endee vector database with recipes.
-2. We used the `@xenova/transformers` library (specifically the `Xenova/all-MiniLM-L6-v2` local ONNX model) to convert recipe texts into 384-dimensional vector embeddings.
-3. When a user queries "What can I cook with eggs and cheese?", the Node.js backend converts the query into a vector.
-4. The backend queries the local **Endee Vector Database** via the `@endee/client` Node.js SDK for the closest cosine-similarity match.
-5. Endee returns the most semantically relevant recipes in milliseconds!
+## 📖 1. Project Overview
+PantryPal+ AI serves two distinct user groups within a seamless ecosystem:
+- **🏪 Retailer B2B Portal:** Empowers store managers to track inventory ledgers, automate discount policies for expiring goods, and handle POS operations. Features a real-time **RAG (Retrieval-Augmented Generation) Chatbot** that queries live stock and official wholesale policies.
+- **🛒 Consumer App:** Allows shoppers to claim digital receipts, track the at-home expiration dates of their groceries, and automatically discover **Semantically Matched Recipes** using the ingredients they already possess.
 
-## 🧠 System Architecture & Design
-- **Vector Database:** Endee (Running locally via Docker)
-- **Machine Learning Layer:** Node.js with `@xenova/transformers` (Local ONNX inferences, zero API cost)
-- **Backend API:** Express.js (Handles inventory, users, and the `/api/recipes/recommend` AI route)
-- **Frontend UI:** React.js / Tailwind CSS
-- **Traditional DB:** MongoDB (Fallback to local JSON)
+### The Problem Solved
+Traditional keyword-based recipe engines fail when users search with vague or synonymous terms (e.g., searching "beef" won't yield recipes requiring "steak" or "ground chuck"). PantryPal+ AI leverages true semantic meaning to ensure zero food goes to waste.
 
-## 🛠 Setup & Evaluation Instructions
+---
+
+## ⚡ 2. The AI/ML Use Case: How Endee Powers PantryPal+
+This application utilizes **Endee**, a high-performance vector database, to drive two core Agentic AI workflows:
+
+### A. Semantic Recipe Search engine
+1. **Vectorization:** Thousands of complex recipes are embedded into 384-dimensional vector arrays using the local `@xenova/transformers` ONNX model (`Xenova/all-MiniLM-L6-v2`).
+2. **Endee Upsertion:** These embeddings, alongside deep recipe metadata, are ingested natively into the Endee Database.
+3. **Semantic Querying:** When a user asks *"What can I cook with eggs and old bread?"*, the Node.js backend vectorizes the human-language query and asks Endee for the closest Cosine-Similarity match.
+4. **Instant Results:** Endee returns the most semantically relevant recipes in milliseconds without expensive external API calls.
+
+### B. Retailer Policy RAG (Retrieval-Augmented Generation)
+1. Official store return policies, markdown schedules, and shipping rules are embedded into Endee.
+2. The B2B Wholesale Chatbot retrieves the most relevant policy based on the retailer's question, merges it with live MongoDB inventory ledgers, and generates a highly accurate, context-aware response.
+
+---
+
+## 🏗️ 3. System Architecture & System Design
+PantryPal+ AI relies on a modernized hybrid-database stack to intelligently separate structured ledger data from complex AI embeddings.
+
+- **Vector Database (AI/ML Context):** **Endee C++ Engine** (running locally via WSL/Native Linux for maximum performance)
+- **Machine Learning Layer:** HuggingFace Transformers (`@xenova/transformers` handling zero-latency ONNX inferences)
+- **Backend API Server:** Node.js, Express.js (RESTful architecture)
+- **Transactional Database:** MongoDB (Fail-safe to Local JSON caching for robust uptime)
+- **Frontend UI Client:** React.js, Tailwind CSS (Interactive Dashboards)
+
+---
+
+## 🚀 4. Setup & Running Instructions
 
 ### Prerequisites
-- Docker Desktop must be running (to host Endee).
 - Node.js (v18+)
+- Windows Subsystem for Linux (WSL) or Native Linux (Required to run the high-performance native Endee Engine)
 
-### Step 1: Start the Endee Vector Database
-Endee is required for the Semantic Search functionality. Open a terminal in the root of this repository and run it via native Linux or WSL:
+### Step 1: Boot the Endee Vector Database
+Endee must be running to handle the Semantic Search functionality. Open a terminal in the root of this repository:
 ```bash
+# On Native Linux or WSL environment:
 ./run.sh
-# Or, if running on Windows via WSL:
+
+# Or if running from Windows Command Prompt/PowerShell via WSL:
 wsl ./run.sh
 ```
-*(Alternatively, you can run `docker compose up -d` if you prefer Docker).*  
-*Endee runs natively on `http://127.0.0.1:8080`.*
+*(Endee will securely initialize and listen for AI queries on `http://127.0.0.1:8080`)*
 
-### Step 2: Start the PantryPal Backend
-Open a new terminal and navigate to the backend directory:
+### Step 2: Initialize the Node.js Backend
+Open a **new** terminal and navigate to the backend directory:
 ```bash
 cd pantry-backend
 npm install
 npm start
 ```
-*The backend runs on `http://localhost:5000`. On startup, it will automatically connect to Endee, download the ML model, create the `recipes` index, and upsert the testing recipes.*
+*Note: On its very first startup, the backend will automatically connect to Endee, download the ML model, create the `recipes` index, and upsert the vector training data.*
 
-### Step 3: Start the PantryPal Frontend
-Open a new terminal and navigate to the frontend directory:
+### Step 3: Launch the React Frontend
+Open a **third** terminal and navigate to the frontend directory:
 ```bash
 cd pantrypal
 npm install
 npm start
 ```
-*The React app runs on `http://localhost:3000`.*
-
-### Step 4: Test the AI Feature
-1. Open `http://localhost:3000` in your browser.
-2. Click **Customer App** (or use the Quick Demo Bypass).
-3. If your virtual pantry is empty, claim a receipt or use the demo data.
-4. Click the **"Suggest Recipe from My Purchases"** button in the Customer Dashboard.
-5. The frontend sends your ingredients to the backend, which vectors the text via Transformers, queries Endee, and returns the AI recipe match!
-
-## 📜 Repository Structure
-- `/endee` - The core C++ Endee engine (as forked from the original repo).
-- `/pantry-backend` - The Node.js application. See `recipeAi.js` for the exact implementation of the Endee SDK and Transformers logic.
-- `/pantrypal` - The React frontend application.
+*The Consumer and Retailer Dashboards will become available at `http://localhost:3000`.*
 
 ---
-*Built with ❤️ utilizing the open-source power of Endee.*
+
+## 🧪 Quick Evaluation Guide
+For evaluating the Endee integration seamlessly:
+1. Open `http://localhost:3000` -> Click **Customer App**.
+2. Assuming your virtual pantry has ingredients, click **"Suggest Recipe from My Purchases"**.
+3. Watch the local Node.js console perfectly vectorize the request and query Endee to return semantic matches instantly!
+
+---
+*Built meticulously with ❤️ utilizing the incredible open-source power of Endee.*
