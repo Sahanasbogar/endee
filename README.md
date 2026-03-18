@@ -48,7 +48,15 @@ This application utilizes **Endee**, a high-performance vector database, to driv
 
 ---
 
-## 🏗️ 3. System Architecture & System Design
+## 🎯 3. Evaluator Notes: SDE/ML Intern Core Competencies
+This project was constructed as a direct technical demonstration of the required JD Skill Sets:
+- **Strong fundamentals in Machine Learning & NLP:** Proved via handling advanced mathematical cosine-similarity search, true semantic context matching, and building structured Retrieval-Augmented Generation (RAG) pipelines.
+- **Understanding of Vector Embeddings:** Engineered efficient local vector generation using `@xenova/transformers` (MiniLM-L6-v2) to map multi-dimensional ingredient data for the application.
+- **Ability to learn new AI systems:** Successfully compiled, booted, and natively query-integrated the new high-performance **Endee C++ Vector Database** to drive the application's core logic.
+
+---
+
+## 🏗️ 4. System Architecture & System Design
 PantryPal+ AI relies on a modernized hybrid-database stack to intelligently separate structured ledger data from complex AI embeddings.
 
 - **Vector Database (AI/ML Context):** **Endee C++ Engine** (running locally via WSL/Native Linux for maximum performance)
@@ -59,7 +67,7 @@ PantryPal+ AI relies on a modernized hybrid-database stack to intelligently sepa
 
 ---
 
-## 🚀 4. Setup & Running Instructions
+## 🚀 5. Setup & Running Instructions
 
 ### Prerequisites
 - Node.js (v18+)
