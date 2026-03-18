@@ -11,13 +11,24 @@ Built and submitted for the **Endee.io Vector Database Evaluation Assignment**.
 
 ---
 
-## 📖 1. Project Overview
-PantryPal+ AI serves two distinct user groups within a seamless ecosystem:
-- **🏪 Retailer B2B Portal:** Empowers store managers to track inventory ledgers, automate discount policies for expiring goods, and handle POS operations. Features a real-time **RAG (Retrieval-Augmented Generation) Chatbot** that queries live stock and official wholesale policies.
-- **🛒 Consumer App:** Allows shoppers to claim digital receipts, track the at-home expiration dates of their groceries, and automatically discover **Semantically Matched Recipes** using the ingredients they already possess.
+## 📖 1. Project Overview & Core Features
+PantryPal+ AI serves two distinct user groups within a seamless, integrated ecosystem:
+
+### 🏪 Retailer B2B Portal (Store Operations)
+- **Smart Inventory & Expiry Scanning:** Retailers scan products alongside their respective expiry dates directly into the database. The system proactively alerts management when items are nearing expiration.
+- **Automated Smart Discounts:** To prevent waste, items nearing expiry automatically trigger smart markdown policies to ensure they sell before spoiling.
+- **POS & Receipt Code Generation:** When a customer checks out, the robust POS module registers the purchase and generates a unique digital receipt code linked to their phone number.
+- **B2B Wholesale RAG Chatbot:** A powerful AI interface that queries live stock ledgers and official wholesale policies to advise retailers on reordering logistics and inventory management.
+- **Semantic Product Search:** Powered by Endee, retailers can search their extensive product catalogs using natural language meaning rather than rigid keyword matches.
+
+### 🛒 Consumer App (At-Home Shoppers)
+- **Digital Receipt Claiming:** Customers enter their POS-generated code in their online portal to instantly import their purchased grocery list into their digital **"My Pantry"**.
+- **At-Home Expiry Tracking:** Consumers track the shelf-life of their specific groceries to stop household food waste before it happens.
+- **RAG Culinary Assistant Bot:** A dedicated Customer Chatbot that intimately knows what is in the user's "My Pantry" list and dynamically answers questions on what to cook.
+- **Zero-Waste AI Recipe Recommendations:** Powered natively by Endee, users can instantly retrieve semantically matched recipes using *only* the specific ingredients they currently possess.
 
 ### The Problem Solved
-Traditional keyword-based recipe engines fail when users search with vague or synonymous terms (e.g., searching "beef" won't yield recipes requiring "steak" or "ground chuck"). PantryPal+ AI leverages true semantic meaning to ensure zero food goes to waste.
+Traditional keyword-based recipe engines fail when users search with vague or synonymous terms (e.g., searching "beef" won't yield recipes requiring "steak" or "ground chuck"). PantryPal+ AI leverages true semantic meaning—layered across the retailer-to-consumer pipeline—to ensure zero food goes to waste.
 
 ---
 
