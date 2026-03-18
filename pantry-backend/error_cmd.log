@@ -1,0 +1,15 @@
+=========================================
+🚀 Initializing Endee Vector Database...
+=========================================
+[Endee Mock] Generating embedding for: "Premium Bulk Organic Rolled Oa..."
+C:\Users\sahan\OneDrive\Desktop\pantry\endee_assignment\endee\pantry-backend\recipeAi.js:1
+const { Endee, Precision } = require('endee');
+                             ^
+
+Error [ERR_REQUIRE_ESM]: require() of ES Module C:\Users\sahan\OneDrive\Desktop\pantry\endee_assignment\endee\pantry-backend\node_modules\endee\dist\index.js from C:\Users\sahan\OneDrive\Desktop\pantry\endee_assignment\endee\pantry-backend\recipeAi.js not supported.
+Instead change the require of index.js in C:\Users\sahan\OneDrive\Desktop\pantry\endee_assignment\endee\pantry-backend\recipeAi.js to a dynamic import() which is available in all CommonJS modules.
+    at Object.<anonymous> (C:\Users\sahan\OneDrive\Desktop\pantry\endee_assignment\endee\pantry-backend\recipeAi.js:1:30) {
+  code: 'ERR_REQUIRE_ESM'
+}
+
+Node.js v20.18.0

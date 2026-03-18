@@ -1,0 +1,15 @@
+Customer Chatbot (Status 200): {"answer":"Hello! 👨‍🍳 I am your PantryPal Culinary Assistant. \n\nI see you have some great items in your inventory: \n- eggs (2 units)\n\nHere is a fantastic, versatile recipe you can make right now:\n\n**Everything-in-the-Pantry Stir Fry**\n\n**Ingredients:**\n- Any proteins or dense vegetables you have.\n- Cooking oil, salt, and pepper.\n- Any sauces (soy sauce, hot sauce) to taste.\n\n**Instructions:**\n1. Chop all ingredients into bite-sized pieces.\n2. Heat oil in a large pan or wok over medium-high heat.\n3. Sauté everything until cooked through and tender.\n4. Toss with your favorite sauce and serve hot!\n\nLet me know if you'd like a more specific recipe!"}
+Retailer Chatbot (Status 200): {"answer":"**Official Return Policy:**\n\nAccording to our guidelines, perishable bulk goods cannot be returned once opened. Non-perishable items like canned goods or dried grains can be returned within 14 days of delivery if the seal is unbroken.","_debug_retrieved_context":"1. Returns allowed within 30 days. 2. Bulk discount applies for >50 items. 3. Standard shipping is 3-5 days."}
+Recipes (Status 200): {
+  "success": true,
+  "message": "Recipes directly matched via Endee Semantic Search",
+  "recipes": [
+    {
+      "id": "dynamic_recipe_mock",
+      "title": "Classic Omelet",
+      "ingredients": "eggs, butter, salt, pepper, cheese",
+      "instructions": "Beat eggs. Melt butter in pan. Pour eggs. Add cheese. Fold and serve.",
+      "score": 0.5821717381477356
+    }
+  ]
+}

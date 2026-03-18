@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer utilities {
+  .animate-in { animation-duration: 0.3s; animation-fill-mode: both; }
+  .fade-in { animation-name: fadeIn; }
+  .zoom-in { animation-name: zoomIn; }
+  .zoom-in-95 { animation-name: zoomIn95; }
+  .slide-in-from-right-4 { animation-name: slideInRight; }
+  .slide-in-from-right-8 { animation-name: slideInRight8; }
+  .slide-in-from-right-10 { animation-name: slideInRight10; }
+  .slide-up { animation-name: slideUp; }
+  .float-anim { animation: floatAnim 3s ease-in-out infinite; }
+  .pulse-soft { animation: pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  .glassy-card { @apply bg-white/70 backdrop-blur-xl border border-white/50 shadow-xl; }
+  .hover-lift { @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl; }
+  .duration-300 { animation-duration: 0.3s; }
+  .duration-500 { animation-duration: 0.5s; }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes zoomIn95 { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes slideInRight { from { opacity: 0; transform: translateX(1rem); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideInRight8 { from { opacity: 0; transform: translateX(2rem); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideInRight10 { from { opacity: 0; transform: translateX(2.5rem); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(1.5rem); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes floatAnim { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes pulseSoft { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }

@@ -1,0 +1,505 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { jsPDF } from 'jspdf';
+import { 
+  LayoutDashboard, Package, PlusCircle, ShoppingCart, 
+  Bell, User, LogOut, Camera, CheckCircle2, 
+  AlertTriangle, History, TrendingDown, Info, Trash2, ShieldCheck, Zap,
+  Smartphone, ChevronLeft, Check, XCircle, AlertCircle,
+  ChefHat, Leaf, ArrowLeft, Wand2,
+  Percent, Flame, Lightbulb, Box, Minus, Plus, Pencil,
+  ArrowRight, RefreshCw, ScanLine, Download,
+  Ticket, Home, ChevronRight, Store, UserCircle2
+} from 'lucide-react';
+import SimpleScanner from './SimpleScanner';
+
+const formatPrice = (n) => `₹${Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+const expiryColor = (item) => {
+    const s = item?.expiryStatus || (item?.finalDiscount > 0 ? 'near' : 'fresh');
+    if (s === 'urgent') return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-600', badge: 'bg-red-500' };
+    if (s === 'near') return { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-600', badge: 'bg-amber-500' };
+    return { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-600', badge: 'bg-emerald-500' };
+};
+
+// --- LOGIN NOTIFICATION TOAST ---
+const LoginNotification = ({ items, onDismiss }) => {
+    if (!items || items.length === 0) return null;
+    return (
+        <div className="fixed top-4 left-4 right-4 max-w-md mx-auto z-[100] animate-[slideDown_0.4s_ease-out]">
+            <div className="bg-amber-50 border-l-4 border-amber-500 rounded-2xl p-4 shadow-xl flex items-start gap-3">
+                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0"><AlertTriangle className="w-5 h-5 text-amber-600" /></div>
+                <div className="flex-1 min-w-0">
+                    <p className="font-bold text-amber-900">Near expiry alert</p>
+                    <p className="text-sm text-amber-800 mt-0.5">{items.length} item(s) need attention soon</p>
+                </div>
+                <button onClick={onDismiss} className="p-1.5 rounded-lg hover:bg-amber-100 text-amber-700"><XCircle className="w-5 h-5" /></button>
+            </div>
+        </div>
+    );
+};
+
+// Use env var in production, fallback to localhost for development
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+
+// --- API HELPER ---
+const fetcher = async (url, options = {}) => {
+  const token = localStorage.getItem('pantry_token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+  
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 10000); 
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers, signal: controller.signal });
+    clearTimeout(id);
+    const data = await response.json();
+    return data; 
+  } catch (err) {
+    console.warn("Offline/Demo Mode Active");
+    return { error: true };
+  }
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const normalizePhone10 = (phone) => {
+  if (phone === undefined || phone === null) return '';
+  const digits = String(phone).replace(/\D/g, '');
+  return digits.length >= 10 ? digits.slice(-10) : digits;
+};
+
+// --- COMPONENTS ---
+const Button = ({ children, onClick, variant = "primary", className = "", loading = false }) => {
+  const base = "px-6 py-4 rounded-2xl font-bold transition-all duration-300 ease-out flex items-center justify-center gap-2 active:scale-95 hover:scale-[1.02] shadow-lg shadow-emerald-900/5";
+  const variants = {
+    primary: "bg-[#1B5E20] text-white hover:bg-[#154a19]",
+    secondary: "bg-emerald-50 text-[#1B5E20] hover:bg-emerald-100",
+    outline: "border-2 border-slate-200 text-slate-600 hover:border-[#1B5E20] hover:text-[#1B5E20] bg-white",
+  };
+  return (
+    <button onClick={onClick} disabled={loading} className={`${base} ${variants[variant]} ${className}`}>
+      {loading && <RefreshCw className="w-5 h-5 animate-spin" />} {children}
+    </button>
+  );
+};
+
+const Input = ({ label, icon: Icon, ...props }) => (
+  <div className="space-y-1.5 w-full">
+    {label && <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">{label}</label>}
+    <div className="relative group">
+      {Icon && <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />}
+      <input {...props} className={`w-full bg-slate-50 border border-slate-200 rounded-xl ${Icon ? 'pl-12' : 'pl-4'} pr-4 py-4 font-medium outline-none focus:border-[#1B5E20] focus:bg-white transition-all placeholder:text-slate-300 text-[#001D3D]`} />
+    </div>
+  </div>
+);
+
+// --- AUTH PAGE ---
+const AuthPage = ({ onAuthSuccess }) => {
+  const [view, setView] = useState('LANDING'); 
+  const [role, setRole] = useState('RETAILER');
+  const [authMode, setAuthMode] = useState('LOGIN'); 
+  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+
+  const bypassLogin = (demoRole) => {
+    const demoUser = { name: "Demo User", phone: "0000000000", role: demoRole };
+    localStorage.setItem('pantry_token', 'demo-token');
+    localStorage.setItem('pantry_user', JSON.stringify(demoUser));
+    onAuthSuccess(demoUser);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+        const endpoint = authMode === 'LOGIN' ? '/auth/login' : '/auth/register';
+        const body = authMode === 'LOGIN' ? { phone, password } : { name, phone, password, role, email };
+        const data = await fetcher(endpoint, { method: 'POST', body: JSON.stringify(body) });
+
+        if (data && data.token) {
+            localStorage.setItem('pantry_token', data.token);
+            localStorage.setItem('pantry_user', JSON.stringify(data.user));
+            onAuthSuccess(data.user);
+        } else {
+            alert(data.message || "Operation Failed");
+        }
+    } catch (e) {
+        alert('Login failed. Please try again.');
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  if (view === 'LANDING') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100 flex flex-col items-center justify-center p-6 relative">
+        <div className="w-full max-w-sm bg-white/95 backdrop-blur-xl rounded-[3rem] p-8 shadow-2xl shadow-slate-200/50 border border-white/80 relative z-10 animate-in zoom-in-95 duration-500">
+            <div className="text-center mb-10">
+                <div className="w-24 h-24 bg-emerald-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-[#1B5E20] shadow-inner"><Leaf className="w-12 h-12 fill-current" /></div>
+                <h1 className="text-4xl font-black text-[#001D3D] tracking-tighter mb-2">PantryPal+</h1>
+                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Select your role to continue</p>
+            </div>
+            <div className="space-y-4">
+                <button onClick={() => { setRole('RETAILER'); setView('FORM'); }} className="w-full bg-[#001D3D] text-white p-6 rounded-3xl flex items-center gap-4 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl hover:shadow-2xl">
+                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center"><Store className="w-6 h-6" /></div>
+                    <div className="text-left flex-1"><h3 className="font-bold text-lg leading-tight">Retailer App</h3><p className="text-white/60 text-xs font-medium">Manage Stock & Sales</p></div><ChevronRight className="w-5 h-5 text-white/40" />
+                </button>
+                <button onClick={() => { setRole('CUSTOMER'); setView('FORM'); }} className="w-full bg-[#1B5E20] text-white p-6 rounded-3xl flex items-center gap-4 hover:scale-[1.02] active:scale-95 transition-all duration-300 shadow-xl shadow-emerald-900/20 hover:shadow-2xl">
+                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center"><UserCircle2 className="w-6 h-6" /></div>
+                    <div className="text-left flex-1"><h3 className="font-bold text-lg leading-tight">Customer App</h3><p className="text-white/60 text-xs font-medium">Recipes & Alerts</p></div><ChevronRight className="w-5 h-5 text-white/40" />
+                </button>
+            </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm bg-white rounded-[3rem] p-8 shadow-2xl border border-white relative animate-in slide-in-from-right-8 duration-500">
+        <button onClick={()=>setView('LANDING')} className="absolute top-8 left-8 p-2 rounded-full hover:bg-slate-50 text-slate-400 transition-colors"><ChevronLeft className="w-6 h-6" /></button>
+        <div className="text-center mb-8 mt-4">
+          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-lg ${role === 'RETAILER' ? 'bg-[#001D3D]' : 'bg-[#1B5E20]'}`}>{role === 'RETAILER' ? <Store /> : <UserCircle2 />}</div>
+          <h1 className="text-2xl font-black text-[#001D3D]">{authMode === 'LOGIN' ? 'Welcome Back' : 'Create Account'}</h1>
+          <p className="text-slate-400 font-bold uppercase text-[10px] mt-1">{role} Portal</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {authMode === 'REGISTER' && (
+            <>
+              <Input label="Full Name" placeholder="Your Name" value={name} onChange={e=>setName(e.target.value)} icon={User} required />
+              <Input label="Email" type="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} />
+            </>
+          )}
+          <Input label="Phone Number" placeholder="9876543210" value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,'').slice(0,10))} icon={Smartphone} required />
+          <Input label="Password" type="password" placeholder="••••••" value={password} onChange={e=>setPassword(e.target.value)} icon={ShieldCheck} required />
+          <Button type="submit" className={`w-full ${role === 'RETAILER' ? 'bg-[#001D3D]' : 'bg-[#1B5E20]'}`} loading={loading}>{authMode === 'LOGIN' ? 'Login' : 'Create Account'}</Button>
+        </form>
+        <button onClick={()=>setAuthMode(authMode === 'LOGIN' ? 'REGISTER' : 'LOGIN')} className="w-full text-center mt-6 text-slate-400 font-bold text-sm hover:text-[#1B5E20]">{authMode === 'LOGIN' ? "New here? Create Account" : "Have an account? Login"}</button>
+      </div>
+    </div>
+  );
+};
+
+// --- RETAILER COMPONENTS ---
+const RetailerDashboard = ({ inventory, user, onNavigate, salesToday }) => {
+    const data = Array.isArray(inventory) ? inventory : [];
+    const nearExpiryCount = data.filter(i => i.finalDiscount > 0 || i.expiryStatus === 'near' || i.expiryStatus === 'urgent').length;
+    return (
+        <div className="animate-in fade-in pb-24">
+            <div className="mb-8"><h1 className="text-3xl font-black text-[#001D3D] mb-1">Hello, {user.name || 'Retailer'}! 👋</h1><p className="text-slate-400 font-medium">Store Overview</p></div>
+            <div className="flex gap-4 overflow-x-auto pb-4">
+                <StatCard title="Total Products" value={data.length} icon={Package} color="text-[#1B5E20]" />
+                <StatCard title="Near Expiry" value={nearExpiryCount} icon={AlertTriangle} color="text-amber-500" sub="Sell First" />
+                <StatCard title="Sales Today" value={formatPrice(salesToday ?? 0)} icon={ShoppingCart} color="text-blue-500" />
+            </div>
+            <div className="bg-[#FFF9E6] border border-amber-100 rounded-[1.5rem] p-6 mb-8 mt-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-4 text-amber-900 font-bold"><AlertTriangle className="w-5 h-5 text-amber-500" /> <Flame className="w-5 h-5 text-rose-500" /> Sell-First Suggestions</div>
+                <div className="space-y-3">
+                    <SuggestionRow icon={Box} title="FEFO Batches" desc="Sell oldest batches first." />
+                    <SuggestionRow icon={Lightbulb} title="Smart Discounts" desc="Auto-apply 20% off on near-expiry." />
+                    <SuggestionRow icon={Zap} title="Attention Needed" desc="Review your near-expiry stock." />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const StatCard = ({ title, value, icon: Icon, color, sub }) => (
+    <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm min-w-[140px] flex-1 transition-all duration-300 hover:shadow-md hover:-translate-y-0.5">
+        <div className="flex justify-between items-start mb-3"><span className="font-bold text-slate-500 text-xs">{title}</span><Icon className={`w-4 h-4 ${color}`} /></div>
+        <span className="text-3xl font-black text-[#001D3D]">{value}</span>
+        {sub && <p className="text-[10px] font-bold text-slate-400 mt-1">{sub}</p>}
+    </div>
+);
+
+const SuggestionRow = ({ icon: Icon, title, desc }) => (
+    <div className="bg-white p-4 rounded-xl shadow-sm flex gap-3 items-start border border-amber-100/50"><Icon className="w-5 h-5 text-amber-500 mt-0.5" /><div className="text-left"><h4 className="font-bold text-[#001D3D] text-sm">{title}</h4><p className="text-xs text-slate-500">{desc}</p></div></div>
+);
+
+const AddStockScreen = ({ onBack, refresh }) => {
+    const [mode, setMode] = useState('manual');
+    const [loading, setLoading] = useState(false);
+    const [form, setForm] = useState({ name: '', barcode: '', exp: '', qty: '', qtyUnit: '', price: '', category: 'General' });
+    const [manualBarcode, setManualBarcode] = useState('');
+    const [imageUploadStatus, setImageUploadStatus] = useState('');
+
+    const handleImageUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        setImageUploadStatus('📸 Processing image...');
+        try {
+            const ZXing = await import('@zxing/library');
+            const codeReader = new ZXing.BrowserMultiFormatReader();
+            const img = new Image();
+            img.onload = async () => {
+                try {
+                    const result = await codeReader.decodeFromImage(img);
+                    if (result) {
+                        const barcode = result.getText();
+                        setImageUploadStatus(`✅ Barcode detected: ${barcode}`);
+                        await handleScan(barcode);
+                    } else {
+                        setImageUploadStatus('❌ No barcode found');
+                    }
+                } catch (e) {
+                    setImageUploadStatus('❌ Error scanning image');
+                }
+            };
+            img.src = URL.createObjectURL(file);
+        } catch (error) {
+            setImageUploadStatus('❌ Error processing');
+        }
+    };
+
+    const handleScan = async (code) => {
+        setLoading(true);
+        try {
+            const item = await fetcher(`/inventory/by-barcode/${encodeURIComponent(code)}`);
+            if (item && !item.error && item.message !== 'Product not found') {
+                setForm({ ...item, barcode: item.barcode || code, exp: item.expiryDate?.slice(0,10) || '' });
+            } else {
+                const g = await fetcher(`/barcode/lookup/${encodeURIComponent(code)}`);
+                if (g && !g.error) {
+                    setForm(f => ({ ...f, barcode: code, name: g.name || '', price: g.price || '', category: g.category || 'General' }));
+                } else {
+                    setForm(f => ({ ...f, barcode: code }));
+                }
+            }
+        } catch (e) { 
+            setForm(f => ({ ...f, barcode: code }));
+        } finally {
+            setLoading(false);
+            setMode('manual');
+        }
+    };
+
+    const handleManualBarcodeSubmit = () => {
+        if (manualBarcode.trim()) handleScan(manualBarcode.trim());
+    };
+
+    const save = async () => {
+        if(!form.name) return;
+        setLoading(true);
+        await fetcher('/inventory', { method: 'POST', body: JSON.stringify(form) });
+        setLoading(false); refresh(); onBack();
+    };
+
+    return (
+        <div className="animate-in slide-in-from-right-10 duration-500 pb-24">
+            <div className="flex items-center gap-4 mb-8"><button onClick={onBack} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center shadow-sm"><ArrowLeft className="w-6 h-6"/></button><h1 className="text-2xl font-black text-[#001D3D]">Add Stock</h1></div>
+            <div className="grid grid-cols-3 gap-3 mb-8">
+                {['Manual', 'Scanner', 'AI Vision'].map((m) => (<button key={m} onClick={() => setMode(m.toLowerCase())} className={`py-3 rounded-xl text-xs font-bold border ${mode === m.toLowerCase() ? 'bg-[#001D3D] text-white' : 'bg-white text-slate-400'}`}>{m}</button>))}
+            </div>
+            
+            {(mode === 'scanner' || mode === 'ai vision') ? (
+                <div className="space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-4 shadow-sm">
+                        <SimpleScanner onScan={handleScan} />
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 shadow-sm">
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="w-full text-sm" />
+                        {imageUploadStatus && <p className="mt-2 text-xs font-bold">{imageUploadStatus}</p>}
+                    </div>
+                    <div className="bg-slate-100 p-4 rounded-xl flex gap-2">
+                        <input value={manualBarcode} onChange={e=>setManualBarcode(e.target.value)} placeholder="Manual Barcode" className="flex-1 px-3 py-2 rounded-lg border" />
+                        <button onClick={handleManualBarcodeSubmit} className="bg-[#1B5E20] text-white px-4 rounded-lg">Check</button>
+                    </div>
+                </div>
+            ) : (
+                <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-xl space-y-6 text-left">
+                    <Input label="Name" value={form.name} onChange={e=>setForm({...form, name:e.target.value})} />
+                    <Input label="Barcode" value={form.barcode} onChange={e=>setForm({...form, barcode:e.target.value})} />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="Qty" type="number" value={form.qty} onChange={e=>setForm({...form, qty:e.target.value})} />
+                        <Input label="Price (₹)" type="number" value={form.price} onChange={e=>setForm({...form, price:e.target.value})} />
+                    </div>
+                    <Input label="Expiry" type="date" value={form.exp} onChange={e=>setForm({...form, exp:e.target.value})} />
+                    <Button onClick={save} className="w-full mt-4">Save Stock</Button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const ProductsScreen = ({ inventory, onBack, refresh }) => {
+    const data = Array.isArray(inventory) ? inventory : [];
+    const deleteItem = async (id) => {
+        if (!window.confirm('Delete?')) return;
+        await fetcher(`/inventory/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        refresh?.();
+    };
+    return (
+        <div className="animate-in fade-in pb-24 text-left">
+                            </div>
+                            <div className="text-right">
+                                <p className="font-black text-[#001D3D]">{formatPrice(item.price)}</p>
+                                <button onClick={() => deleteItem(item._id)} className="text-rose-600 text-xs font-bold">Delete</button>
+                            </div>
+    );
+};
+
+const SalesScreen = ({ onBack, inventory, onSaleComplete }) => {
+    const [cart, setCart] = useState([]);
+    const [customerPhone, setCustomerPhone] = useState('');
+    const [checkoutResult, setCheckoutResult] = useState(null);
+    const [loading, setLoading] = useState(false);
+    
+    const checkout = async () => {
+        if (!customerPhone) return alert("Phone required");
+        setLoading(true);
+        const data = await fetcher('/sales', { method: 'POST', body: JSON.stringify({ items: cart, customerPhone }) });
+        setLoading(false);
+        if (data && data.passcode) {
+            setCheckoutResult(data);
+            setCart([]);
+            onSaleComplete?.(data.totalAmount);
+        }
+    };
+
+    return (
+        <div className="animate-in fade-in pb-24 text-left">
+            <div className="flex items-center gap-4 mb-6"><button onClick={onBack} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center"><ArrowLeft className="w-6 h-6"/></button><h1 className="text-2xl font-black text-[#001D3D]">POS</h1></div>
+            {!checkoutResult ? (
+                <div className="space-y-4">
+                    <Input label="Customer Phone" value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)} />
+                    <Button onClick={checkout} loading={loading} className="w-full">Checkout</Button>
+                </div>
+            ) : (
+                <div className="bg-emerald-50 p-8 rounded-3xl border border-emerald-200 text-center">
+                    <CheckCircle2 className="mx-auto w-12 h-12 text-emerald-600 mb-4" />
+                    <h3 className="text-xl font-bold">Passcode: {checkoutResult.passcode}</h3>
+                    <Button onClick={()=>setCheckoutResult(null)} className="mt-4">Next Sale</Button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const DiscountsScreen = ({ inventory, onBack }) => {
+    const data = Array.isArray(inventory) ? inventory.filter(i=>i.finalDiscount > 0) : [];
+    return (
+        <div className="animate-in fade-in pb-24 text-left">
+            <div className="flex items-center gap-4 mb-8"><button onClick={onBack} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center"><ArrowLeft className="w-6 h-6"/></button><h1 className="text-3xl font-black text-[#001D3D]">Discounts</h1></div>
+            {data.map(item => (
+                <div key={item._id} className="p-5 rounded-[2rem] bg-amber-50 border border-amber-200 mb-3 flex justify-between items-center">
+                    <div><h4 className="font-bold">{item.name}</h4><p className="text-xs">Exp: {formatDate(item.expiryDate)}</p></div>
+                    <div className="text-right font-black text-amber-600">{item.finalDiscount}% OFF</div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const CustomerApp = ({ user, inventory, onLogout, refresh }) => {
+    const [tab, setTab] = useState('home');
+    const [claimCode, setClaimCode] = useState('');
+    const data = Array.isArray(inventory) ? inventory : [];
+    const handleClaim = async () => {
+        const res = await fetcher('/purchases/claim', { method: 'POST', body: JSON.stringify({ passcode: claimCode }) });
+        if (res?.message === 'Purchase claimed!') { setClaimCode(''); refresh(); }
+    };
+    return (
+        <div className="max-w-md mx-auto min-h-screen bg-white shadow-2xl relative flex flex-col border-x border-slate-100 text-left">
+            <div className="p-6 flex-1 overflow-y-auto pb-32">
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="text-2xl font-black">Hi, {user.name}!</h1>
+                    <button onClick={onLogout} className="text-slate-400"><LogOut/></button>
+                </div>
+                <div className="bg-slate-50 p-6 rounded-3xl mb-8">
+                    <h3 className="font-bold mb-2">Claim Purchase</h3>
+                    <div className="flex gap-2">
+                        <input value={claimCode} onChange={e=>setClaimCode(e.target.value)} placeholder="000000" className="flex-1 px-4 py-2 rounded-xl border" />
+                        <button onClick={handleClaim} className="bg-[#1B5E20] text-white px-4 rounded-xl">Claim</button>
+                    </div>
+                </div>
+                <div className="space-y-3">
+                    {data.map(i => (
+                        <div key={i._id} className="p-4 border rounded-2xl flex justify-between">
+                            <span>{i.name}</span><span className="text-slate-400 text-xs">{i.daysLeft} days left</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="fixed bottom-0 w-full max-w-md bg-white border-t p-4 flex justify-around">
+                <NavIcon icon={Home} label="Home" active={tab==='home'} onClick={()=>setTab('home')} />
+                <NavIcon icon={Package} label="Pantry" active={tab==='items'} onClick={()=>setTab('items')} />
+                <NavIcon icon={Bell} label="Alerts" active={tab==='alerts'} onClick={()=>setTab('alerts')} />
+            </div>
+        </div>
+    );
+};
+
+const NavIcon = ({ icon: Icon, label, active, onClick }) => (
+    <button onClick={onClick} className={`flex flex-col items-center transition-all ${active ? 'text-[#1B5E20]' : 'text-slate-400'}`}>
+        <Icon className="w-6 h-6" /><span className="text-[10px] font-bold">{label}</span>
+    </button>
+);
+
+const App = () => {
+  const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [inventory, setInventory] = useState([]);
+  const [salesToday, setSalesToday] = useState(0);
+  const [showLoginNotify, setShowLoginNotify] = useState(true);
+  const [viewMode, setViewMode] = useState('desktop');
+
+  const loadInitialData = async () => {
+    const data = await fetcher('/inventory');
+    if (Array.isArray(data)) setInventory(data);
+  };
+
+  const refreshStats = async () => {
+    if (user?.role === 'RETAILER') {
+        const stats = await fetcher('/sales/stats');
+        if (stats?.todayTotal) setSalesToday(stats.todayTotal);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+        loadInitialData();
+        refreshStats();
+        const int = setInterval(() => { loadInitialData(); refreshStats(); }, 5000);
+        return () => clearInterval(int);
+    }
+  }, [user]);
+
+  if (!user) return <AuthPage onAuthSuccess={setUser} />;
+  if (user.role === 'CUSTOMER') return <CustomerApp user={user} inventory={inventory} onLogout={()=>setUser(null)} refresh={loadInitialData} />;
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex justify-center">
+        <div className="w-full max-w-md bg-white min-h-screen shadow-2xl relative flex flex-col border-x">
+            <div className="p-6 border-b flex justify-between items-center bg-white sticky top-0 z-30">
+                <div className="flex items-center gap-2"><Leaf className="text-[#1B5E20]"/><span className="font-black">PantryPal+</span></div>
+                <button onClick={()=>setUser(null)}><LogOut className="w-5 h-5 text-slate-300" /></button>
+            </div>
+            <main className="flex-1 overflow-y-auto p-6 pb-32">
+                {activeTab === 'dashboard' && <RetailerDashboard inventory={inventory} user={user} salesToday={salesToday} />}
+                {activeTab === 'add_stock' && <AddStockScreen onBack={()=>setActiveTab('dashboard')} refresh={loadInitialData} />}
+                {activeTab === 'ledger' && <ProductsScreen inventory={inventory} onBack={()=>setActiveTab('dashboard')} refresh={loadInitialData} />}
+                {activeTab === 'sales' && <SalesScreen onBack={()=>setActiveTab('dashboard')} inventory={inventory} onSaleComplete={(v)=>setSalesToday(s=>s+v)} />}
+                {activeTab === 'discounts' && <DiscountsScreen inventory={inventory} onBack={()=>setActiveTab('dashboard')} />}
+            </main>
+            <div className="fixed bottom-0 w-full max-w-md bg-white border-t p-4 flex justify-around rounded-t-3xl shadow-xl z-50">
+                <NavIcon icon={LayoutDashboard} label="Dash" active={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')} />
+                <NavIcon icon={Package} label="Stock" active={activeTab==='ledger'} onClick={()=>setActiveTab('ledger')} />
+                <NavIcon icon={PlusCircle} label="Add" active={activeTab==='add_stock'} onClick={()=>setActiveTab('add_stock')} />
+                <NavIcon icon={ShoppingCart} label="Sales" active={activeTab==='sales'} onClick={()=>setActiveTab('sales')} />
+                <NavIcon icon={Percent} label="Disc" active={activeTab==='discounts'} onClick={()=>setActiveTab('discounts')} />
+            </div>
+        </div>
+    </div>
+  );
+};
+
+export default App;
